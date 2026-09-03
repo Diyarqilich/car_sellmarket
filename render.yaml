@@ -1,0 +1,43 @@
+# Render Blueprint — AutoMarket
+# 1) Create a free Postgres on https://neon.tech (or Render paid DB)
+# 2) Connect this repo in Render → Blueprint
+# 3) Set DATABASE_URL on automarket-api to your Postgres connection string
+
+services:
+  - type: web
+    name: automarket-api
+    runtime: docker
+    dockerfilePath: ./backend/Dockerfile
+    dockerContext: ./backend
+    plan: free
+    healthCheckPath: /api/docs/
+    envVars:
+      - key: DATABASE_URL
+        sync: false
+      - key: SECRET_KEY
+        generateValue: true
+      - key: DEBUG
+        value: "False"
+      - key: ALLOW_ALL_HOSTS
+        value: "true"
+      - key: CORS_ALLOW_ALL
+        value: "true"
+      - key: PYTHONUNBUFFERED
+        value: "1"
+
+  - type: web
+    name: automarket-web
+    runtime: static
+    rootDir: frontend
+    buildCommand: npm ci && npm run build
+    staticPublishPath: dist
+    routes:
+      - type: rewrite
+        source: /*
+        destination: /index.html
+    envVars:
+      - key: VITE_API_URL
+        fromService:
+          name: automarket-api
+          type: web
+          envVarKey: RENDER_EXTERNAL_URL
